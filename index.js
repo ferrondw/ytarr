@@ -48,13 +48,13 @@ async function embedMetadata(song, filePath, album = null) {
     const youtubeAlbum = album ? album : await ytmusic.getAlbum(song.album.albumId);
 
     // youtube by default compresses an image to 90% quality and 544x544, so here i just remove compression and return the original size image
-    const coverUrl = youtubeAlbum.thumbnails[0].url.replace('w60-h60-s-l90-rj', 's0-l100');
+    const coverUrl = `${youtubeAlbum.thumbnails[0].url.split('=')[0]}=s0-l100`;
     const coverImage = Buffer.from(await (await fetch(coverUrl)).arrayBuffer());
 
     // write lyrics to lrc file because youtube delivers lrc formatted lyrics anyways and id3 tags barely work (especially in wmp for some reason)
     await fetch(`https://lyrics.paxsenix.org/youtube/lyrics?id=${song.videoId}`).then(function (response) {
         return response.text();
-    }).then(function (data) {
+    }).then(async function (data) {
         const lrcPath = `${filePath.replace(/\.[^\.]+$/, '')}.lrc`; // https://gist.github.com/MarshySwamp/40aefebb39e0eef2d7599ac4050490d9
         await fs.promises.writeFile(lrcPath, data);
     }).catch(() => { });
@@ -82,7 +82,7 @@ async function embedMetadata(song, filePath, album = null) {
 
 //#region Helpers
 function findTrackNumber(song, album) {
-    for (let index = 1; index < album.songs.length + 1; index++) {
+    for (let index = 0; index < album.songs.length; index++) {
         if (album.songs[index].videoId === song.videoId) return index;
     }
 }
