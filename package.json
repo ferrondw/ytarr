@@ -12,7 +12,6 @@
   "dependencies": {
     "express": "^5.2.1",
     "node-id3": "^0.2.9",
-    "util": "^0.12.5",
     "ytmusic-api": "^5.3.1"
   }
 }

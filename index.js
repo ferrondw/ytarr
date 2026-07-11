@@ -8,9 +8,6 @@ import NodeID3 from 'node-id3';
 import express from 'express';
 import path from 'path';
 import fs from 'fs';
-import { promisify } from 'util';
-
-const execAsync = promisify(exec);
 
 const app = express();
 const __filename = fileURLToPath(import.meta.url);
@@ -30,14 +27,12 @@ app.get('/', (req, res) => {
 
 app.get('/search/:songName', async (req, res) => {
     const song = (await ytmusic.searchSongs(req.params.songName))[0];
-    console.log(song);
     downloadSong(song);
 });
 
 app.get('/search/album/:albumName', async (req, res) => {
     const albumId = (await ytmusic.searchAlbums(req.params.albumName))[0].albumId;
     const album = (await ytmusic.getAlbum(albumId));
-    console.log(album);
     for (const song of album.songs) { // https://stackoverflow.com/questions/37576685/using-async-await-with-a-foreach-loop
         downloadSong(song);
     }
@@ -48,10 +43,9 @@ app.listen(5071, () => {
 });
 
 async function downloadSong(song) {
-    const { stdout } = await execAsync(
-        `yt-dlp --js-runtimes node -x -P "./temp" --audio-format "mp3" --no-keep-video --no-playlist "https://www.youtube.com/watch?v=${song.videoId}" --print after_move:filepath`
-    );
-    const downloadPath = stdout.trim();
+    const downloadPath = await execSync(
+        `yt-dlp --js-runtimes node -x -P "./temp" --cookies "./cookies.txt" --audio-format "mp3" --no-keep-video --no-playlist "https://www.youtube.com/watch?v=${song.videoId}" --print after_move:filepath`
+    ).toString().trim();
 
     const fileExtension = downloadPath.split('.').slice(-1)[0];
     const fileName = FolderNameSanitizer.sanitize(`${song.album.name} - ${song.name} [${song.videoId}].${fileExtension}`);
@@ -90,7 +84,7 @@ async function embedMetadata(song, filePath, album = null) {
 
     NodeID3.write(tags, filePath);
 
-    // tried embedding id3 tags but wmp doesn't recognize them?
+    /*
     await fetch(`https://lrclib.net/api/search?q=${song.name} ${song.artist.name}`).then(function (response) {
         return response.json();
     }).then(async function (data) {
@@ -98,6 +92,7 @@ async function embedMetadata(song, filePath, album = null) {
         if (data.length < 5) return;
         await fs.promises.writeFile(lrcPath, data[0].syncedLyrics.replace(`\n`, `\r\n`)); // windows fucked newlines or something no clue but this works
     }).catch(() => { });
+    */
 }
 
 //#region Helpers

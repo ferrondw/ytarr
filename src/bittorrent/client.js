@@ -13,7 +13,13 @@ export default function initClient(app) {
     });
 
     app.get('/api/v2/app/version', (req, res) => {
-        res.send('v5.2.3');
+        res.setHeader('content-type', 'text/plain'); // https://stackoverflow.com/questions/51661744/how-to-set-content-type-when-doing-res-send
+        res.send('v4.1.3');
+    });
+
+    app.get('/api/v2/app/webapiVersion', (req, res) => {
+        res.setHeader('content-type', 'text/plain');
+        res.send('2.0');
     });
 
     app.get('/api/v2/app/buildInfo', (req, res) => {
@@ -24,6 +30,12 @@ export default function initClient(app) {
     });
 
     app.get('/api/v2/torrents/categories', (req, res) => {
+        res.json({
+            "Audio": {
+                "name": "Audio",
+                "savePath": "./temp"
+            }
+        })
     });
 
     app.post('/api/v2/torrents/add', (req, res) => {
