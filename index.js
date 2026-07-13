@@ -44,7 +44,7 @@ app.listen(5071, () => {
 
 async function downloadSong(song) {
     const downloadPath = await execSync(
-        `yt-dlp --js-runtimes node -x -P "./temp" --cookies "./cookies.txt" --audio-format "mp3" --no-keep-video --no-playlist "https://www.youtube.com/watch?v=${song.videoId}" --print after_move:filepath`
+        `yt-dlp --js-runtimes node -x -P "./temp" --audio-format "mp3" --no-keep-video --no-playlist "https://www.youtube.com/watch?v=${song.videoId}" --print after_move:filepath`
     ).toString().trim();
 
     const fileExtension = downloadPath.split('.').slice(-1)[0];
@@ -75,7 +75,7 @@ async function embedMetadata(song, filePath, album = null) {
         image: {
             mime: "image/jpeg",
             type: {
-                id: NodeID3.TagConstants.AttachedPicture.PictureType.FRONT_COVER
+                id: 0x03 // NodeID3.TagConstants.AttachedPicture.PictureType.FRONT_COVER
             },
             description: "album cover",
             imageBuffer: coverImage

@@ -1,5 +1,5 @@
 {
-  "name": "album-dl",
+  "name": "ytarr",
   "version": "1.0.0",
   "description": "Node app for downloading music using yt-dlp for use in Jellyfin",
   "license": "ISC",
