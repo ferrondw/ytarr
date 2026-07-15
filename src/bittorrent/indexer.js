@@ -1,6 +1,6 @@
+import Constants from '../../constants.js';
 import createTorrent from "create-torrent";
 import crypto from 'crypto';
-import Constants from '../../constants.js';
 
 export let releases = new Map();
 
@@ -34,9 +34,15 @@ export default function initIndexer(app) {
     }
 
     async function search(req, res) {
-        let q = decodeURIComponent(req.query.q);
-        console.log("Searching: " + q);
-        const album = (await Constants.YTMusic.searchAlbums(q))[0];
+        const results = await Constants.YTMusic.searchAlbums(decodeURIComponent(req.query.q));
+
+        if (results.length < 1) {
+            res.type('application/xml'); // send dummy empty xml so the indexer failure isn't triggered in lidarr
+            res.send(`<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><channel></channel></rss>`);
+            return;
+        }
+
+        const album = results[0];
         const id = crypto.randomUUID();
 
         res.type('application/xml');

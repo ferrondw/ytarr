@@ -16,6 +16,7 @@
     "multer": "^2.2.0",
     "node-id3": "^0.2.9",
     "parse-torrent": "^11.0.21",
+    "promisify": "^0.0.3",
     "ytmusic-api": "^5.3.1"
   }
 }
