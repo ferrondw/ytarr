@@ -204,20 +204,18 @@ async function embedMetadata(song, job, filePath) {
     Constants.NodeID3.write(tags, filePath);
     console.log(`Embedded ${song.artist.name} - ${song.name}`);
 
+    // await fetch(`https://lrclib.net/api/search?q=${song.name} ${song.artist.name}`).then(function (response) {
+    //     return response.json();
+    // }).then(async function (data) {
+    //     const lrcPath = `${filePath.replace(/\.[^\.]+$/, '')}.lrc`; // https://gist.github.com/MarshySwamp/40aefebb39e0eef2d7599ac4050490d9
+    //     if (data.length < 5) return;
+    //     await fs.promises.writeFile(lrcPath, data[0].syncedLyrics.replace(`\n`, `\r\n`)); // windows fucked newlines or something no clue but this works
+    // }).catch(() => { });
+
     let progressToAdd = 1 / (job.ytarr.album.songs.length);
     job.progress += progressToAdd;
-    console.log(`Added ${progressToAdd}... thus is now ${job.progress}`);
-    if(job.progress >= 1) job.state = 'stalledUP';
+    if (job.progress >= 1) job.state = 'stalledUP';
 
-    /*
-    await fetch(`https://lrclib.net/api/search?q=${song.name} ${song.artist.name}`).then(function (response) {
-        return response.json();
-    }).then(async function (data) {
-        const lrcPath = `${filePath.replace(/\.[^\.]+$/, '')}.lrc`; // https://gist.github.com/MarshySwamp/40aefebb39e0eef2d7599ac4050490d9
-        if (data.length < 5) return;
-        await fs.promises.writeFile(lrcPath, data[0].syncedLyrics.replace(`\n`, `\r\n`)); // windows fucked newlines or something no clue but this works
-    }).catch(() => { });
-    */
 }
 
 function findTrackNumber(song, album) {
