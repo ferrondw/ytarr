@@ -1,6 +1,6 @@
 <img src="./src/images/logo.png" width="100%" height="auto"></img>
 
-ytarr is a node app that fakes a qBittorrent client for Lidarr to allow for yt-dlp downloads
+ytarr is a node app that emulates a qBittorrent client for Lidarr to allow for yt-dlp downloads
 
 # Requirements
 - [Node.js](https://nodejs.org/)
@@ -10,7 +10,6 @@ ytarr is a node app that fakes a qBittorrent client for Lidarr to allow for yt-d
 # Installation
 - Clone or download this repo
 - Run `LAUNCH.bat` or `npm i; node index.js` in cmd
-- Open `http://localhost:5071` (or `http://localhost:PORT` if you have a .env file)
 - Follow for instructions for both the [download client](#download-client) and [indexer](#indexer) if you haven't set that up in Lidarr yet
 
 # Lidarr Instructions
