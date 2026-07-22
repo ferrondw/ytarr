@@ -42,7 +42,7 @@ export default function initIndexer(app) {
             return;
         }
 
-        const album = results[0];
+        const album = await Constants.YTMusic.getAlbum(results[0].albumId);
         const id = crypto.randomUUID();
 
         res.type('application/xml');
@@ -57,7 +57,7 @@ export default function initIndexer(app) {
             <guid isPermaLink="false">${id}</guid>
 			<enclosure
                 url="http://localhost:${process.env.PORT ?? 5071}/indexer/api?t=get&amp;id=${id}"
-                length="72351744"
+                length="${album.songs.reduce((size, song) => size + song.duration * (185 * 1000 / 8), 0)}"
                 type="application/x-bittorrent"/>
             <newznab:attr name="artist" value="${album.artist.name}"/>
             <newznab:attr name="album" value="${album.name}"/>

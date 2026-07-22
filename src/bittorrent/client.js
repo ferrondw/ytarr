@@ -13,6 +13,8 @@ const upload = multer({ storage: multer.memoryStorage() });
 
 const execFileAsync = promisify(execFile);
 
+const timePerSongEstimate = 10;
+
 //#region Client
 export default function initClient(app) {
     app.post('/api/v2/auth/login', (req, res) => {
@@ -95,15 +97,12 @@ export default function initClient(app) {
     );
 
     app.post('/api/v2/torrents/delete', (req, res) => {
-        console.log(req.protocol + '://' + req.get('host') + req.originalUrl);
     });
 
     app.post('/api/v2/torrents/pause', (req, res) => {
-        console.log(req.protocol + '://' + req.get('host') + req.originalUrl);
     });
 
     app.post('/api/v2/torrents/resume', (req, res) => {
-        console.log(req.protocol + '://' + req.get('host') + req.originalUrl);
     });
 
     app.get('/api/v2/torrents/info', (req, res) => {
@@ -123,7 +122,7 @@ async function downloadAlbum(album, jobId) {
     const job = {
         "category": "lidarr",
         "content_path": `${Constants.downloadPath}\\${folderName}`,
-        "eta": completeAlbum.songs.length * 10,
+        "eta": completeAlbum.songs.length * timePerSongEstimate,
         "has_metadata": true,
         "hash": `hash-${jobId}`,
         "infohash_v1": `infohash-${jobId}`,
@@ -143,7 +142,7 @@ async function downloadAlbum(album, jobId) {
     jobs.set(jobId, job);
 
     for (const song of completeAlbum.songs) { // https://stackoverflow.com/questions/37576685/using-async-await-with-a-foreach-loop
-        await downloadSong(song, job);
+        await downloadSong(song, job); // removing await downloads all songs concurrently
     }
 }
 
@@ -214,6 +213,7 @@ async function embedMetadata(song, job, filePath) {
 
     let progressToAdd = 1 / (job.ytarr.album.songs.length);
     job.progress += progressToAdd;
+    job.eta -= timePerSongEstimate;
     if (job.progress >= 1) job.state = 'stalledUP';
 
 }
