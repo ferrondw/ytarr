@@ -1,1 +1,1 @@
-npm i; node index.js
+node index.js

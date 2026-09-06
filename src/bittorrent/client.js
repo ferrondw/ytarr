@@ -17,6 +17,11 @@ const timePerSongEstimate = 10;
 
 //#region Client
 export default function initClient(app) {
+    app.get('/', (req, res) => {
+        res.type('text/plain');
+        res.send('ytarr is working!');
+    });
+
     app.post('/api/v2/auth/login', (req, res) => {
         res.cookie('SID', 'ytarr'); // not really needed but lidarr refuses to connect without cookie
         res.type('text/plain');
