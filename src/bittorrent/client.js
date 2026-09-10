@@ -8,12 +8,14 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 
-export const jobs = new Map();
-const upload = multer({ storage: multer.memoryStorage() });
-
-const execFileAsync = promisify(execFile);
+const queue = [];
+const queueLimit = 3;
 
 const timePerSongEstimate = 10;
+let currentDownloadCount = 0;
+
+const upload = multer({ storage: multer.memoryStorage() });
+const execFileAsync = promisify(execFile);
 
 //#region Client
 export default function initClient(app) {
@@ -90,7 +92,8 @@ export default function initClient(app) {
             const album = releases.get(id);
             if (album === null) throw new Error('no album found');
 
-            downloadAlbum(album, id);
+            await enqueue(album, id);
+            moveQueue();
 
             res.type("text/plain").send("Ok.");
         }
@@ -111,44 +114,32 @@ export default function initClient(app) {
     });
 
     app.get('/api/v2/torrents/info', (req, res) => {
-        res.json(Array.from(jobs.values()));
+        res.json(queue);
     });
 }
 //#endregion
 
 //#region Downloader
-async function downloadAlbum(album, jobId) {
-    // youtube by default compresses an image to 90% quality and 544x544, so here i just remove compression and return the original size image
-    const coverUrl = `${album.thumbnails[0].url.split('=')[0]}=s0-l100`;
-    const coverImage = Buffer.from(await (await fetch(coverUrl)).arrayBuffer());
-    const completeAlbum = await Constants.YTMusic.getAlbum(album.albumId);
+async function downloadAlbum(job) {
+    job.state = "downloading";
+    currentDownloadCount++;
+    console.log(`Started downloading: ${job.ytarr.album.artist.name} - ${job.ytarr.album.name}`);
 
-    const folderName = FolderNameSanitizer.sanitize(`${album.artist.name} - ${album.name} (${album.year})`);
-    const job = {
-        "category": "lidarr",
-        "content_path": `${Constants.downloadPath}\\${folderName}`,
-        "eta": completeAlbum.songs.length * timePerSongEstimate,
-        "has_metadata": true,
-        "hash": `hash-${jobId}`,
-        "infohash_v1": `infohash-${jobId}`,
-        "name": folderName,
-        "progress": 0.0001,
-        "root_path": `${Constants.downloadPath}\\${folderName}`,
-        "save_path": Constants.downloadPath,
-        "size": 100000, // lidarr ignores progress if the download doesn't have a size
-        "state": "downloading", // stalledUP is completed
-
-        "ytarr": {
-            "id": jobId,
-            "album": completeAlbum,
-            "coverImage": coverImage,
-        },
-    };
-    jobs.set(jobId, job);
-
-    for (const song of completeAlbum.songs) { // https://stackoverflow.com/questions/37576685/using-async-await-with-a-foreach-loop
-        await downloadSong(song, job); // removing await downloads all songs concurrently
+    try {
+        for (const song of job.ytarr.album.songs) { // https://stackoverflow.com/questions/37576685/using-async-await-with-a-foreach-loop
+            await downloadSong(song, job); // removing await downloads all songs concurrently
+        }
     }
+    catch(err) {
+        console.error(err);
+        job.state = "error";
+        currentDownloadCount--;
+        return;
+    }
+
+    console.log(`Finished downloading: ${job.ytarr.album.artist.name} - ${job.ytarr.album.name}`);
+    moveQueue();
+    currentDownloadCount--;
 }
 
 async function downloadSong(song, job, retryCounter = 3) {
@@ -230,3 +221,44 @@ function findTrackNumber(song, album) {
     }
 }
 //#endregion
+
+//#region Queue
+async function enqueue(album, jobId) {
+    // youtube by default compresses an image to 90% quality and 544x544, so here i just remove compression and return the original size image
+    const coverUrl = `${album.thumbnails[0].url.split('=')[0]}=s0-l100`;
+    const coverImage = Buffer.from(await (await fetch(coverUrl)).arrayBuffer());
+    const completeAlbum = await Constants.YTMusic.getAlbum(album.albumId);
+
+    const folderName = FolderNameSanitizer.sanitize(`${album.artist.name} - ${album.name} (${album.year})`);
+    const job = {
+        "category": "lidarr",
+        "content_path": `${Constants.downloadPath}\\${folderName}`,
+        "eta": completeAlbum.songs.length * timePerSongEstimate,
+        "has_metadata": true,
+        "hash": `hash-${jobId}`,
+        "infohash_v1": `infohash-${jobId}`,
+        "name": folderName,
+        "progress": 0.0001,
+        "root_path": `${Constants.downloadPath}\\${folderName}`,
+        "save_path": Constants.downloadPath,
+        "size": 100000, // lidarr ignores progress if the download doesn't have a size
+        "state": "queuedDL",
+
+        "ytarr": {
+            "id": jobId,
+            "album": completeAlbum,
+            "coverImage": coverImage,
+        },
+    };
+    queue.push(job);
+}
+
+function moveQueue() {
+    while (currentDownloadCount < queueLimit) {
+        let nextJob = queue.find(job => job.state === 'queuedDL');
+        if (!nextJob) break;
+        downloadAlbum(nextJob);
+    }
+}
+
+//endregion
