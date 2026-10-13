@@ -10,6 +10,7 @@ import fs from 'fs';
 
 const queue = [];
 const queueLimit = 3;
+const musicFileExtension = 'opus';
 
 const timePerSongEstimate = 10;
 let currentDownloadCount = 0;
@@ -145,7 +146,7 @@ async function downloadAlbum(job) {
 async function downloadSong(song, job, retryCounter = 3) {
     try {
         const downloadFolder = FolderNameSanitizer.sanitize(`${job.ytarr.album.artist.name} - ${job.ytarr.album.name} (${job.ytarr.album.year})`);
-        const downloadPath = `${Constants.downloadPath}\\${downloadFolder}\\${song.videoId}.mp3`;
+        const downloadPath = `${Constants.downloadPath}\\${downloadFolder}\\${song.videoId}.${musicFileExtension}`;
 
         await execFileAsync( // just exec promisified doesn't work for some reason, it never exits, execFile does though
             "yt-dlp",
@@ -153,7 +154,7 @@ async function downloadSong(song, job, retryCounter = 3) {
                 "--js-runtimes", "node",
                 "-x",
                 "-o", downloadPath,
-                "--audio-format", "mp3",
+                "--audio-format", musicFileExtension,
                 "--no-keep-video",
                 "--no-playlist",
                 `https://www.youtube.com/watch?v=${song.videoId}`
@@ -162,7 +163,7 @@ async function downloadSong(song, job, retryCounter = 3) {
 
         console.log(`Downloaded ${song.artist.name} - ${song.name} to: ${downloadPath}`);
 
-        const fileName = FolderNameSanitizer.sanitize(`${song.album.name} - ${findTrackNumber(song, job.ytarr.album)} - ${song.name}.mp3`);
+        const fileName = FolderNameSanitizer.sanitize(`${song.album.name} - ${findTrackNumber(song, job.ytarr.album)} - ${song.name}.${musicFileExtension}`);
         const destination = `${Constants.downloadPath}\\${downloadFolder}\\${fileName}`;
 
         await fs.promises.mkdir(path.dirname(destination), { recursive: true });
@@ -189,15 +190,14 @@ async function embedMetadata(song, job, filePath) {
         image: {
             mime: "image/jpeg",
             type: {
-                id: 0x03 // NodeID3.TagConstants.AttachedPicture.PictureType.FRONT_COVER
+                id: 0x03 // FRONT_COVER
             },
             description: "album cover",
             imageBuffer: job.ytarr.coverImage
         }
     }
 
-    Constants.NodeID3.write(tags, filePath);
-    console.log(`Embedded ${song.artist.name} - ${song.name}`);
+    // ... encode tags
 
     // await fetch(`https://lrclib.net/api/search?q=${song.name} ${song.artist.name}`).then(function (response) {
     //     return response.json();
@@ -211,7 +211,6 @@ async function embedMetadata(song, job, filePath) {
     job.progress += progressToAdd;
     job.eta -= timePerSongEstimate;
     if (job.progress >= 1) job.state = 'stalledUP';
-
 }
 
 function findTrackNumber(song, album) {
@@ -261,4 +260,4 @@ function moveQueue() {
     }
 }
 
-//endregion
+//#endregion
