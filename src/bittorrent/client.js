@@ -3,6 +3,7 @@ import Constants from '../../constants.js';
 import parseTorrent from "parse-torrent";
 import { execFile } from 'child_process';
 import { releases } from './indexer.js';
+import { spawn } from 'child_process';
 import { promisify } from 'util';
 import multer from 'multer';
 import path from 'path';
@@ -10,7 +11,6 @@ import fs from 'fs';
 
 const queue = [];
 const queueLimit = 3;
-const musicFileExtension = 'opus';
 
 const timePerSongEstimate = 10;
 let currentDownloadCount = 0;
@@ -146,7 +146,7 @@ async function downloadAlbum(job) {
 async function downloadSong(song, job, retryCounter = 3) {
     try {
         const downloadFolder = FolderNameSanitizer.sanitize(`${job.ytarr.album.artist.name} - ${job.ytarr.album.name} (${job.ytarr.album.year})`);
-        const downloadPath = `${Constants.downloadPath}\\${downloadFolder}\\${song.videoId}.${musicFileExtension}`;
+        const downloadPath = `${Constants.downloadPath}\\${downloadFolder}\\${song.videoId}.opus`;
 
         await execFileAsync( // just exec promisified doesn't work for some reason, it never exits, execFile does though
             "yt-dlp",
@@ -163,7 +163,7 @@ async function downloadSong(song, job, retryCounter = 3) {
 
         console.log(`Downloaded ${song.artist.name} - ${song.name} to: ${downloadPath}`);
 
-        const fileName = FolderNameSanitizer.sanitize(`${song.artist.name} - ${song.album.name} - ${findTrackNumber(song, job.ytarr.album)} - ${song.name}.${musicFileExtension}`);
+        const fileName = FolderNameSanitizer.sanitize(`${song.artist.name} - ${song.album.name} - ${findTrackNumber(song, job.ytarr.album)} - ${song.name}.opus`);
         const destination = `${Constants.downloadPath}\\${downloadFolder}\\${fileName}`;
 
         await fs.promises.mkdir(path.dirname(destination), { recursive: true });
@@ -171,15 +171,83 @@ async function downloadSong(song, job, retryCounter = 3) {
 
         await new Promise(resolve => setTimeout(resolve, 300)); // wait for rename because it sometimes takes a bit
 
-        let progressToAdd = 1 / (job.ytarr.album.songs.length);
-        job.progress += progressToAdd;
-        job.eta -= timePerSongEstimate;
-        if (job.progress >= 1) job.state = 'stalledUP';
-
+        await embedMetadata(song, job, destination);
     } catch (err) {
         if (retryCounter > 0) return downloadSong(song, job, retryCounter - 1);
         throw err;
     }
+}
+
+
+async function embedMetadata(song, job, filePath) {
+    const tags = {
+        TITLE: song.name,
+        ALBUM: job.ytarr.album.name,
+        ARTIST: song.artist.name,
+        ALBUMARTIST: song.artist.name,
+        PERFORMER: song.artist.name,
+        DATE: String(job.ytarr.album.year),
+        TRACKNUMBER: String(findTrackNumber(song, job.ytarr.album)),
+        TRACKTOTAL: String(job.ytarr.album.songs.length)
+    };
+
+    const tempPath = filePath.replace(
+        /\.opus$/i,
+        ".tagging.tmp.opus"
+    );
+
+    const args = [
+        "-y",
+        "-i", filePath,
+        "-map", "0",
+        "-map_metadata", "-1",
+        "-c", "copy"
+    ];
+
+    for (const [key, value] of Object.entries(tags)) {
+        if (value !== undefined && value !== null && value !== "") {
+            args.push("-metadata", `${key}=${value}`);
+        }
+    }
+
+    args.push(tempPath);
+
+    try {
+        await new Promise((resolve, reject) => {
+            const ffmpeg = spawn("ffmpeg", args, {
+                windowsHide: true
+            });
+
+            let stderr = "";
+
+            ffmpeg.stderr.on("data", data => {
+                stderr += data.toString();
+            });
+
+            ffmpeg.on("error", reject);
+
+            ffmpeg.on("close", code => {
+                if (code === 0) {
+                    resolve();
+                } else {
+                    reject(new Error(
+                        `FFmpeg metadata embedding failed (${code}):\n${stderr}`
+                    ));
+                }
+            });
+        });
+
+        await fs.promises.rename(tempPath, filePath);
+
+    } catch (error) {
+        await fs.rm(tempPath, { force: true }).catch(() => { });
+        throw error;
+    }
+
+    let progressToAdd = 1 / (job.ytarr.album.songs.length);
+    job.progress += progressToAdd;
+    job.eta -= timePerSongEstimate;
+    if (job.progress >= 1) job.state = 'stalledUP';
 }
 
 function findTrackNumber(song, album) {
