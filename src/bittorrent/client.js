@@ -154,7 +154,7 @@ async function downloadSong(song, job, retryCounter = 3) {
                 "--js-runtimes", "node",
                 "-x",
                 "-o", downloadPath,
-                "--audio-format", musicFileExtension,
+                "--audio-format", 'opus',
                 "--no-keep-video",
                 "--no-playlist",
                 `https://www.youtube.com/watch?v=${song.videoId}`
