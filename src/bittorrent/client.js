@@ -131,7 +131,7 @@ async function downloadAlbum(job) {
             await downloadSong(song, job); // removing await downloads all songs concurrently
         }
     }
-    catch(err) {
+    catch (err) {
         console.error(err);
         job.state = "error";
         currentDownloadCount--;
@@ -163,7 +163,7 @@ async function downloadSong(song, job, retryCounter = 3) {
 
         console.log(`Downloaded ${song.artist.name} - ${song.name} to: ${downloadPath}`);
 
-        const fileName = FolderNameSanitizer.sanitize(`${song.album.name} - ${findTrackNumber(song, job.ytarr.album)} - ${song.name}.${musicFileExtension}`);
+        const fileName = FolderNameSanitizer.sanitize(`${song.artist.name} - ${song.album.name} - ${findTrackNumber(song, job.ytarr.album)} - ${song.name}.${musicFileExtension}`);
         const destination = `${Constants.downloadPath}\\${downloadFolder}\\${fileName}`;
 
         await fs.promises.mkdir(path.dirname(destination), { recursive: true });
@@ -171,46 +171,15 @@ async function downloadSong(song, job, retryCounter = 3) {
 
         await new Promise(resolve => setTimeout(resolve, 300)); // wait for rename because it sometimes takes a bit
 
-        await embedMetadata(song, job, destination);
+        let progressToAdd = 1 / (job.ytarr.album.songs.length);
+        job.progress += progressToAdd;
+        job.eta -= timePerSongEstimate;
+        if (job.progress >= 1) job.state = 'stalledUP';
+
     } catch (err) {
         if (retryCounter > 0) return downloadSong(song, job, retryCounter - 1);
         throw err;
     }
-}
-
-async function embedMetadata(song, job, filePath) {
-    const tags = {
-        title: song.name,
-        album: job.ytarr.album.name,
-        artist: song.artist.name,
-        performerInfo: song.artist.name,
-        year: job.ytarr.album.year,
-        length: song.duration,
-        trackNumber: findTrackNumber(song, job.ytarr.album),
-        image: {
-            mime: "image/jpeg",
-            type: {
-                id: 0x03 // FRONT_COVER
-            },
-            description: "album cover",
-            imageBuffer: job.ytarr.coverImage
-        }
-    }
-
-    // ... encode tags
-
-    // await fetch(`https://lrclib.net/api/search?q=${song.name} ${song.artist.name}`).then(function (response) {
-    //     return response.json();
-    // }).then(async function (data) {
-    //     const lrcPath = `${filePath.replace(/\.[^\.]+$/, '')}.lrc`; // https://gist.github.com/MarshySwamp/40aefebb39e0eef2d7599ac4050490d9
-    //     if (data.length < 5) return;
-    //     await fs.promises.writeFile(lrcPath, data[0].syncedLyrics.replace(`\n`, `\r\n`)); // windows fucked newlines or something no clue but this works
-    // }).catch(() => { });
-
-    let progressToAdd = 1 / (job.ytarr.album.songs.length);
-    job.progress += progressToAdd;
-    job.eta -= timePerSongEstimate;
-    if (job.progress >= 1) job.state = 'stalledUP';
 }
 
 function findTrackNumber(song, album) {
