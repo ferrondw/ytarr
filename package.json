@@ -1,7 +1,7 @@
 {
   "name": "ytarr",
   "version": "1.0.0",
-  "description": "Node app for downloading music using yt-dlp for use in Jellyfin",
+  "description": "yt-dlp for Lidarr",
   "license": "ISC",
   "author": "ferrondw",
   "type": "module",
@@ -16,7 +16,6 @@
     "multer": "^2.2.0",
     "parse-torrent": "^11.0.21",
     "promisify": "^0.0.3",
-    "vorbis-encoder-js": "^1.0.2",
     "ytmusic-api": "^5.3.1"
   }
 }

@@ -1,6 +1,5 @@
 import { fileURLToPath } from 'url';
 import YTMusicAPI from 'ytmusic-api';
-import vorbisEncoderJs  from 'vorbis-encoder-js';
 import path from 'path';
 import dotenv from 'dotenv';
 
@@ -14,8 +13,7 @@ await ytmusic.initialize();
 
 const Constants = {
     downloadPath: process.env.DOWNLOAD_PATH || `${__dirname}\\downloads`,
-    YTMusic: ytmusic,
-    vorbisEncoderJs
+    YTMusic: ytmusic
 }
 
 export default Constants;
